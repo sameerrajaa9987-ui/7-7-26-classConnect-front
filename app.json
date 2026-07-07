@@ -19,7 +19,9 @@
       "supportsTablet": true
     },
     "android": {
-      "permissions": ["android.permission.INTERNET"],
+      "permissions": [
+        "android.permission.INTERNET"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#2544DB"
@@ -30,6 +32,19 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": ["expo-secure-store", "expo-localization", "expo-font"]
+    "plugins": [
+      "expo-secure-store",
+      "expo-localization",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5dfb70af-788a-4b3b-9e1c-5f7a5e74760d"
+      }
+    },
+    "owner": "connectclass7",
+    "updates": {
+      "url": "https://u.expo.dev/5dfb70af-788a-4b3b-9e1c-5f7a5e74760d"
+    }
   }
 }
