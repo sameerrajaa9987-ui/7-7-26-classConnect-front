@@ -13,6 +13,21 @@ export const useCreateLesson = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["lessons"] }),
   });
 };
+export const useUpdateLesson = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: any }) =>
+      lmsApi.updateLesson(v.id, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lessons"] }),
+  });
+};
+export const useDeleteLesson = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => lmsApi.removeLesson(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lessons"] }),
+  });
+};
 export const useCompleteLesson = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -36,6 +51,24 @@ export const useCreateAssignment = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (b: any) => lmsApi.createAssignment(b),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["assignments"] }),
+  });
+};
+export const useUpdateAssignment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: any }) =>
+      lmsApi.updateAssignment(v.id, v.body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["assignments"] });
+      qc.invalidateQueries({ queryKey: ["assignment"] });
+    },
+  });
+};
+export const useDeleteAssignment = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => lmsApi.removeAssignment(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["assignments"] }),
   });
 };
@@ -74,6 +107,24 @@ export const useCreateQuiz = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (b: any) => lmsApi.createQuiz(b),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["quizzes"] }),
+  });
+};
+export const useUpdateQuiz = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: any }) =>
+      lmsApi.updateQuiz(v.id, v.body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["quizzes"] });
+      qc.invalidateQueries({ queryKey: ["quiz"] });
+    },
+  });
+};
+export const useDeleteQuiz = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => lmsApi.removeQuiz(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["quizzes"] }),
   });
 };

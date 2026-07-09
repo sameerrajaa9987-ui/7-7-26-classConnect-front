@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { View, Pressable, ScrollView } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Modal, Pressable, ScrollView } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   ArrowLeft,
@@ -9,10 +9,13 @@ import {
   TriangleAlert,
   BarChart3,
   FileSpreadsheet,
+  Pencil,
+  Trash2,
+  X,
 } from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
 import { PERMISSIONS } from "@shared/permissions";
-import { palette, radius } from "@shared/designSystem";
+import { palette, radius, shadows } from "@shared/designSystem";
 import {
   Screen,
   Text,
@@ -24,6 +27,7 @@ import {
   Select,
   StatusChip,
   EmptyState,
+  confirm,
 } from "@shared/ui";
 import { apiErrorMessage } from "@api/apiClient";
 import {
@@ -32,6 +36,8 @@ import {
   useExamAnalytics,
   useEnterMarks,
   usePublishResults,
+  useUpdateExam,
+  useDeleteExam,
   useMyReportCard,
 } from "@modules/exams/hooks/useExams";
 import { useStudents } from "@modules/students/hooks/useStudents";
@@ -89,11 +95,14 @@ export default function ExamDetailScreen() {
 }
 
 function StaffView({ examId, exam, canMarks, canPublish }: any) {
+  const navigation = useNavigation<any>();
   const { data: students } = useStudents({ batchId: exam.batchId, limit: 200 });
   const { data: results } = useExamResults(examId);
   const { data: analytics } = useExamAnalytics(examId);
   const enter = useEnterMarks();
   const publish = usePublishResults();
+  const del = useDeleteExam();
+  const [showEdit, setShowEdit] = useState(false);
   const [subjectId, setSubjectId] = useState<string | null>(
     exam.subjects[0]?.subjectId ?? null,
   );
@@ -123,6 +132,40 @@ function StaffView({ examId, exam, canMarks, canPublish }: any) {
 
   return (
     <VStack gap={16}>
+      {/* Manage: edit / delete */}
+      {canPublish ? (
+        <HStack gap={10}>
+          <Button
+            label="Edit exam"
+            size="sm"
+            variant="secondary"
+            fullWidth={false}
+            icon={
+              <Pencil size={15} color={palette.cobalt[600]} strokeWidth={2} />
+            }
+            onPress={() => setShowEdit(true)}
+          />
+          <Button
+            label="Delete exam"
+            size="sm"
+            variant="destructive"
+            fullWidth={false}
+            loading={del.isPending}
+            icon={<Trash2 size={15} color="#FFFFFF" strokeWidth={2} />}
+            onPress={() =>
+              confirm(
+                `Delete exam "${exam.name}"? Entered marks and report cards will be removed. This can't be undone.`,
+                () =>
+                  del.mutate(examId, { onSuccess: () => navigation.goBack() }),
+              )
+            }
+          />
+        </HStack>
+      ) : null}
+      {showEdit ? (
+        <EditExamModal exam={exam} onClose={() => setShowEdit(false)} />
+      ) : null}
+
       {/* Analytics */}
       {analytics && analytics.appeared > 0 ? (
         <View
@@ -294,6 +337,106 @@ function StaffView({ examId, exam, canMarks, canPublish }: any) {
     </VStack>
   );
 }
+
+function EditExamModal({ exam, onClose }: { exam: any; onClose: () => void }) {
+  const update = useUpdateExam();
+  const [name, setName] = useState(exam.name || "");
+  const [examType, setExamType] = useState(exam.examType || "term");
+  const prev = useRef(update.isPending);
+  useEffect(() => {
+    if (prev.current && !update.isPending && !update.error) onClose();
+    prev.current = update.isPending;
+  }, [update.isPending, update.error, onClose]);
+  const submit = () => {
+    if (!name) return;
+    update.mutate({ id: exam.id || exam._id, body: { name, examType } });
+  };
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View style={mstyle.backdrop}>
+        <View style={mstyle.sheet}>
+          <HStack
+            align="center"
+            justify="space-between"
+            style={{ marginBottom: 16 }}
+          >
+            <Text variant="h3" tone="primary">
+              Edit exam
+            </Text>
+            <Pressable onPress={onClose} hitSlop={8}>
+              <X size={20} color={palette.text.tertiary} strokeWidth={2} />
+            </Pressable>
+          </HStack>
+          {update.error ? (
+            <View style={mstyle.err}>
+              <Text variant="body-sm" tone="danger">
+                {apiErrorMessage(update.error)}
+              </Text>
+            </View>
+          ) : null}
+          <VStack gap={14}>
+            <TextField
+              label="Exam name"
+              value={name}
+              onChangeText={setName}
+              placeholder="Term 1 Exam"
+            />
+            <Select
+              label="Type"
+              value={examType}
+              options={[
+                { value: "term", label: "Term" },
+                { value: "unit_test", label: "Unit Test" },
+                { value: "midterm", label: "Midterm" },
+                { value: "final", label: "Final" },
+                { value: "practical", label: "Practical" },
+                { value: "other", label: "Other" },
+              ]}
+              onChange={(v) => setExamType(v || "term")}
+            />
+            <Text variant="caption" tone="tertiary">
+              To change subjects, delete this exam and create a new one (only
+              possible before marks are entered).
+            </Text>
+          </VStack>
+          <Button
+            label="Save changes"
+            size="lg"
+            loading={update.isPending}
+            onPress={submit}
+            style={{ marginTop: 18 }}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const mstyle = {
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15,23,42,0.45)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    padding: 20,
+  },
+  sheet: {
+    width: "100%" as const,
+    maxWidth: 480,
+    backgroundColor: palette.surface.primary,
+    borderRadius: radius.xl,
+    padding: 22,
+    ...shadows.lg,
+  },
+  err: {
+    padding: 12,
+    borderRadius: radius.md,
+    backgroundColor: palette.danger.bg,
+    borderWidth: 1,
+    borderColor: palette.danger.border,
+    marginBottom: 14,
+  },
+};
 
 function ReportCardView({ examId }: { examId: string }) {
   const { data, isLoading, error } = useMyReportCard(examId);

@@ -13,6 +13,12 @@ export const examsApi = {
   list: (batchId?: string) => g<Exam[]>("/exams", { batchId }),
   create: (body: any) =>
     apiClient.post<{ data: Exam }>("/exams", body).then((r) => r.data.data),
+  update: (id: string, body: any) =>
+    apiClient
+      .patch<{ data: Exam }>(`/exams/${id}`, body)
+      .then((r) => r.data.data),
+  remove: (id: string) =>
+    apiClient.delete(`/exams/${id}`).then((r) => r.data.data),
   get: (id: string) => g<Exam>(`/exams/${id}`),
   enterMarks: (id: string, body: any) =>
     apiClient.post(`/exams/${id}/marks`, body).then((r) => r.data.data),

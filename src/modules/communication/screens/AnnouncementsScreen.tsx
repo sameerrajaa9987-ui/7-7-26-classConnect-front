@@ -6,7 +6,7 @@ import {
   ScrollView,
   useWindowDimensions,
 } from "react-native";
-import { Megaphone, Plus, X } from "lucide-react-native";
+import { Megaphone, Plus, X, Pencil, Trash2 } from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
 import { PERMISSIONS } from "@shared/permissions";
 import { palette, radius, shadows, layout } from "@shared/designSystem";
@@ -22,11 +22,14 @@ import {
   StatusChip,
   EmptyState,
   Fab,
+  confirm,
 } from "@shared/ui";
 import { apiErrorMessage } from "@api/apiClient";
 import {
   useAnnouncements,
   useCreateAnnouncement,
+  useUpdateAnnouncement,
+  useDeleteAnnouncement,
 } from "@modules/communication/hooks/useComm";
 import { useBatches } from "@modules/academics/hooks/useAcademics";
 
@@ -45,6 +48,8 @@ export default function AnnouncementsScreen() {
   const isWide = width >= layout.wideBreakpoint;
   const { data, isLoading, refetch, isRefetching } = useAnnouncements();
   const [showAdd, setShowAdd] = useState(false);
+  const [editAnn, setEditAnn] = useState<any | null>(null);
+  const del = useDeleteAnnouncement();
   const list = data || [];
 
   return (
@@ -111,9 +116,47 @@ export default function AnnouncementsScreen() {
                       {a.body}
                     </Text>
                   ) : null}
-                  <Text variant="caption" tone="tertiary">
-                    {a.createdByName} · {new Date(a.createdAt).toLocaleString()}
-                  </Text>
+                  <HStack justify="space-between" align="center">
+                    <Text
+                      variant="caption"
+                      tone="tertiary"
+                      style={{ flex: 1 }}
+                    >
+                      {a.createdByName} ·{" "}
+                      {new Date(a.createdAt).toLocaleString()}
+                    </Text>
+                    {canManage ? (
+                      <HStack gap={4} align="center">
+                        <Pressable
+                          onPress={() => setEditAnn(a)}
+                          hitSlop={8}
+                          style={{ padding: 6 }}
+                        >
+                          <Pencil
+                            size={16}
+                            color={palette.cobalt[600]}
+                            strokeWidth={2}
+                          />
+                        </Pressable>
+                        <Pressable
+                          onPress={() =>
+                            confirm(
+                              `Delete announcement "${a.title}"? This can't be undone.`,
+                              () => del.mutate(a.id),
+                            )
+                          }
+                          hitSlop={8}
+                          style={{ padding: 6 }}
+                        >
+                          <Trash2
+                            size={16}
+                            color={palette.danger.text}
+                            strokeWidth={2}
+                          />
+                        </Pressable>
+                      </HStack>
+                    ) : null}
+                  </HStack>
                 </VStack>
               </HStack>
             </Card>
@@ -127,6 +170,13 @@ export default function AnnouncementsScreen() {
         />
       ) : null}
       <ComposeModal visible={showAdd} onClose={() => setShowAdd(false)} />
+      {editAnn ? (
+        <ComposeModal
+          visible
+          editAnnouncement={editAnn}
+          onClose={() => setEditAnn(null)}
+        />
+      ) : null}
     </Screen>
   );
 }
@@ -141,11 +191,16 @@ function audienceLabel(a: any) {
 function ComposeModal({
   visible,
   onClose,
+  editAnnouncement,
 }: {
   visible: boolean;
   onClose: () => void;
+  editAnnouncement?: any;
 }) {
   const create = useCreateAnnouncement();
+  const update = useUpdateAnnouncement();
+  const isEdit = !!editAnnouncement;
+  const mut = isEdit ? update : create;
   const { data: batches } = useBatches({ limit: 200 });
   const [form, setForm] = useState({
     title: "",
@@ -157,7 +212,17 @@ function ComposeModal({
   });
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
   useEffect(() => {
-    if (!visible)
+    if (!visible) return;
+    if (editAnnouncement) {
+      setForm({
+        title: editAnnouncement.title || "",
+        body: editAnnouncement.body || "",
+        tone: editAnnouncement.tone || "info",
+        audience: editAnnouncement.audience || "all",
+        roleTarget: editAnnouncement.roleTarget || "parent",
+        batchId: editAnnouncement.batchId || null,
+      });
+    } else {
       setForm({
         title: "",
         body: "",
@@ -166,14 +231,26 @@ function ComposeModal({
         roleTarget: "parent",
         batchId: null,
       });
-  }, [visible]);
-  const prev = useRef(create.isPending);
+    }
+  }, [visible, editAnnouncement]);
+  const prev = useRef(mut.isPending);
   useEffect(() => {
-    if (prev.current && !create.isPending && !create.error) onClose();
-    prev.current = create.isPending;
-  }, [create.isPending, create.error, onClose]);
+    if (prev.current && !mut.isPending && !mut.error) onClose();
+    prev.current = mut.isPending;
+  }, [mut.isPending, mut.error, onClose]);
   const submit = () => {
     if (!form.title) return;
+    if (isEdit) {
+      update.mutate({
+        id: editAnnouncement.id,
+        body: {
+          title: form.title,
+          body: form.body || "",
+          tone: form.tone,
+        },
+      });
+      return;
+    }
     const body: any = {
       title: form.title,
       body: form.body || undefined,
@@ -199,16 +276,16 @@ function ComposeModal({
             style={{ marginBottom: 16 }}
           >
             <Text variant="h3" tone="primary">
-              New announcement
+              {isEdit ? "Edit announcement" : "New announcement"}
             </Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <X size={20} color={palette.text.tertiary} strokeWidth={2} />
             </Pressable>
           </HStack>
-          {create.error ? (
+          {mut.error ? (
             <View style={styles.err}>
               <Text variant="body-sm" tone="danger">
-                {apiErrorMessage(create.error)}
+                {apiErrorMessage(mut.error)}
               </Text>
             </View>
           ) : null}
@@ -229,41 +306,50 @@ function ComposeModal({
                 onChangeText={(v) => set("body", v)}
                 placeholder="Details…"
               />
-              <Select
-                label="Audience"
-                value={form.audience}
-                options={[
-                  { value: "all", label: "Everyone" },
-                  { value: "role", label: "A role" },
-                  { value: "batch", label: "A batch" },
-                ]}
-                onChange={(v) => set("audience", v || "all")}
-              />
-              {form.audience === "role" ? (
-                <Select
-                  label="Role"
-                  value={form.roleTarget}
-                  options={[
-                    { value: "parent", label: "Parents" },
-                    { value: "student", label: "Students" },
-                    { value: "teacher", label: "Teachers" },
-                    { value: "staff", label: "Staff" },
-                  ]}
-                  onChange={(v) => set("roleTarget", v || "parent")}
-                />
-              ) : null}
-              {form.audience === "batch" ? (
-                <Select
-                  label="Batch"
-                  placeholder="Select batch"
-                  value={form.batchId}
-                  options={(batches?.data || []).map((b) => ({
-                    value: b.id,
-                    label: `${b.name} · ${b.courseName}`,
-                  }))}
-                  onChange={(v) => set("batchId", v)}
-                />
-              ) : null}
+              {isEdit ? (
+                <Text variant="caption" tone="tertiary">
+                  Audience ({audienceLabel(editAnnouncement)}) can't be changed
+                  after sending. Delete and re-send to change who receives it.
+                </Text>
+              ) : (
+                <>
+                  <Select
+                    label="Audience"
+                    value={form.audience}
+                    options={[
+                      { value: "all", label: "Everyone" },
+                      { value: "role", label: "A role" },
+                      { value: "batch", label: "A batch" },
+                    ]}
+                    onChange={(v) => set("audience", v || "all")}
+                  />
+                  {form.audience === "role" ? (
+                    <Select
+                      label="Role"
+                      value={form.roleTarget}
+                      options={[
+                        { value: "parent", label: "Parents" },
+                        { value: "student", label: "Students" },
+                        { value: "teacher", label: "Teachers" },
+                        { value: "staff", label: "Staff" },
+                      ]}
+                      onChange={(v) => set("roleTarget", v || "parent")}
+                    />
+                  ) : null}
+                  {form.audience === "batch" ? (
+                    <Select
+                      label="Batch"
+                      placeholder="Select batch"
+                      value={form.batchId}
+                      options={(batches?.data || []).map((b) => ({
+                        value: b.id,
+                        label: `${b.name} · ${b.courseName}`,
+                      }))}
+                      onChange={(v) => set("batchId", v)}
+                    />
+                  ) : null}
+                </>
+              )}
               <Select
                 label="Tone"
                 value={form.tone}
@@ -278,9 +364,9 @@ function ComposeModal({
             </VStack>
           </ScrollView>
           <Button
-            label="Send announcement"
+            label={isEdit ? "Save changes" : "Send announcement"}
             size="lg"
-            loading={create.isPending}
+            loading={mut.isPending}
             onPress={submit}
             style={{ marginTop: 18 }}
           />

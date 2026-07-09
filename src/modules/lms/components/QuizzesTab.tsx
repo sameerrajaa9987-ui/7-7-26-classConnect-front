@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Modal, Pressable, ScrollView } from "react-native";
-import { ListChecks, Plus, X, Trash2, CheckCircle2 } from "lucide-react-native";
+import {
+  ListChecks,
+  Plus,
+  X,
+  Trash2,
+  CheckCircle2,
+  Pencil,
+} from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
 import { PERMISSIONS } from "@shared/permissions";
 import { palette, radius } from "@shared/designSystem";
@@ -14,11 +21,14 @@ import {
   Select,
   StatusChip,
   EmptyState,
+  confirm,
 } from "@shared/ui";
 import { apiErrorMessage } from "@api/apiClient";
 import {
   useQuizzes,
   useCreateQuiz,
+  useUpdateQuiz,
+  useDeleteQuiz,
   useQuiz,
   useAttemptQuiz,
 } from "@modules/lms/hooks/useLms";
@@ -33,7 +43,9 @@ export function QuizzesTab() {
   const isStudent = role === "student";
   const { data, isLoading } = useQuizzes();
   const [showAdd, setShowAdd] = useState(false);
+  const [editQuiz, setEditQuiz] = useState<any | null>(null);
   const [attemptId, setAttemptId] = useState<string | null>(null);
+  const del = useDeleteQuiz();
   const list = data || [];
 
   return (
@@ -59,9 +71,13 @@ export function QuizzesTab() {
       ) : (
         list.map((q: any) => (
           <Card
-            key={q.id}
+            key={q.id || q._id}
             onPress={
-              isStudent && !q.myAttempt ? () => setAttemptId(q.id) : undefined
+              isStudent && !q.myAttempt
+                ? () => setAttemptId(q.id)
+                : canManage
+                  ? () => setEditQuiz(q)
+                  : undefined
             }
           >
             <HStack align="center" gap={12}>
@@ -99,12 +115,49 @@ export function QuizzesTab() {
                 ) : (
                   <StatusChip label="Attempt" tone="info" />
                 )
+              ) : canManage ? (
+                <HStack gap={4} align="center">
+                  <Pressable
+                    onPress={() => setEditQuiz(q)}
+                    hitSlop={8}
+                    style={{ padding: 6 }}
+                  >
+                    <Pencil
+                      size={17}
+                      color={palette.cobalt[600]}
+                      strokeWidth={2}
+                    />
+                  </Pressable>
+                  <Pressable
+                    onPress={() =>
+                      confirm(
+                        `Delete quiz "${q.title}"? This can't be undone.`,
+                        () => del.mutate(q.id || q._id),
+                      )
+                    }
+                    hitSlop={8}
+                    style={{ padding: 6 }}
+                  >
+                    <Trash2
+                      size={17}
+                      color={palette.danger.text}
+                      strokeWidth={2}
+                    />
+                  </Pressable>
+                </HStack>
               ) : null}
             </HStack>
           </Card>
         ))
       )}
-      <CreateQuizModal visible={showAdd} onClose={() => setShowAdd(false)} />
+      <QuizFormModal visible={showAdd} onClose={() => setShowAdd(false)} />
+      {editQuiz ? (
+        <QuizFormModal
+          visible
+          editQuiz={editQuiz}
+          onClose={() => setEditQuiz(null)}
+        />
+      ) : null}
       {attemptId ? (
         <AttemptModal id={attemptId} onClose={() => setAttemptId(null)} />
       ) : null}
@@ -112,14 +165,19 @@ export function QuizzesTab() {
   );
 }
 
-function CreateQuizModal({
+function QuizFormModal({
   visible,
   onClose,
+  editQuiz,
 }: {
   visible: boolean;
   onClose: () => void;
+  editQuiz?: any;
 }) {
   const create = useCreateQuiz();
+  const update = useUpdateQuiz();
+  const isEdit = !!editQuiz;
+  const mut = isEdit ? update : create;
   const { data: batches } = useBatches({ limit: 200 });
   const [batchId, setBatchId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -127,20 +185,32 @@ function CreateQuizModal({
     { text: "", options: ["", ""], correctIndex: 0, marks: "1" },
   ]);
   useEffect(() => {
-    if (!visible) {
+    if (!visible) return;
+    if (editQuiz) {
+      setBatchId(String(editQuiz.batchId || ""));
+      setTitle(editQuiz.title || "");
+      setQs(
+        (editQuiz.questions || []).map((q: any) => ({
+          text: q.text,
+          options: q.options?.length ? [...q.options] : ["", ""],
+          correctIndex: q.correctIndex ?? 0,
+          marks: String(q.marks ?? 1),
+        })),
+      );
+    } else {
       setBatchId(null);
       setTitle("");
       setQs([{ text: "", options: ["", ""], correctIndex: 0, marks: "1" }]);
     }
-  }, [visible]);
-  const prev = useRef(create.isPending);
+  }, [visible, editQuiz]);
+  const prev = useRef(mut.isPending);
   useEffect(() => {
-    if (prev.current && !create.isPending && !create.error) onClose();
-    prev.current = create.isPending;
-  }, [create.isPending, create.error, onClose]);
+    if (prev.current && !mut.isPending && !mut.error) onClose();
+    prev.current = mut.isPending;
+  }, [mut.isPending, mut.error, onClose]);
 
   const submit = () => {
-    if (!batchId || !title) return;
+    if (!title || (!isEdit && !batchId)) return;
     const questions = qs
       .filter((q) => q.text && q.options.filter(Boolean).length >= 2)
       .map((q) => ({
@@ -153,7 +223,14 @@ function CreateQuizModal({
         marks: Number(q.marks) || 1,
       }));
     if (!questions.length) return;
-    create.mutate({ batchId, title, questions });
+    if (isEdit) {
+      update.mutate({
+        id: editQuiz.id || editQuiz._id,
+        body: { title, questions },
+      });
+    } else {
+      create.mutate({ batchId, title, questions });
+    }
   };
 
   return (
@@ -171,16 +248,16 @@ function CreateQuizModal({
             style={{ marginBottom: 12 }}
           >
             <Text variant="h3" tone="primary">
-              Create quiz
+              {isEdit ? "Edit quiz" : "Create quiz"}
             </Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <X size={20} color={palette.text.tertiary} strokeWidth={2} />
             </Pressable>
           </HStack>
-          {create.error ? (
+          {mut.error ? (
             <View style={ov.err}>
               <Text variant="body-sm" tone="danger">
-                {apiErrorMessage(create.error)}
+                {apiErrorMessage(mut.error)}
               </Text>
             </View>
           ) : null}
@@ -189,16 +266,18 @@ function CreateQuizModal({
             showsVerticalScrollIndicator={false}
           >
             <VStack gap={14}>
-              <Select
-                label="Batch"
-                placeholder="Select batch"
-                value={batchId}
-                options={(batches?.data || []).map((b) => ({
-                  value: b.id,
-                  label: `${b.name} · ${b.courseName}`,
-                }))}
-                onChange={setBatchId}
-              />
+              {isEdit ? null : (
+                <Select
+                  label="Batch"
+                  placeholder="Select batch"
+                  value={batchId}
+                  options={(batches?.data || []).map((b) => ({
+                    value: b.id,
+                    label: `${b.name} · ${b.courseName}`,
+                  }))}
+                  onChange={setBatchId}
+                />
+              )}
               <TextField
                 label="Quiz title"
                 value={title}
@@ -314,9 +393,9 @@ function CreateQuizModal({
             </VStack>
           </ScrollView>
           <Button
-            label="Create quiz"
+            label={isEdit ? "Save changes" : "Create quiz"}
             size="lg"
-            loading={create.isPending}
+            loading={mut.isPending}
             onPress={submit}
             style={{ marginTop: 16 }}
           />

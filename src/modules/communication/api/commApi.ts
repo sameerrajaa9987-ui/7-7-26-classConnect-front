@@ -18,6 +18,17 @@ export const commApi = {
     apiClient
       .post<{ data: Announcement }>("/communication/announcements", body)
       .then((r) => r.data.data),
+  updateAnnouncement: (id: string, body: any) =>
+    apiClient
+      .patch<{ data: Announcement }>(
+        `/communication/announcements/${id}`,
+        body,
+      )
+      .then((r) => r.data.data),
+  removeAnnouncement: (id: string) =>
+    apiClient
+      .delete(`/communication/announcements/${id}`)
+      .then((r) => r.data.data),
 
   contacts: () => g<Contact[]>("/communication/contacts"),
   conversations: () => g<Conversation[]>("/communication/conversations"),

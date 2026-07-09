@@ -14,3 +14,4 @@ export { Avatar } from "./Avatar";
 export { Screen } from "./Screen";
 export { EmptyState } from "./EmptyState";
 export { useBottomPadding, useTabBottomPadding } from "./useBottomPadding";
+export { confirm } from "./confirm";

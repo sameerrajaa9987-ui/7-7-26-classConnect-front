@@ -13,6 +13,21 @@ export const useCreateAnnouncement = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
   });
 };
+export const useUpdateAnnouncement = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: any }) =>
+      commApi.updateAnnouncement(v.id, v.body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
+  });
+};
+export const useDeleteAnnouncement = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => commApi.removeAnnouncement(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["announcements"] }),
+  });
+};
 
 export const useContacts = () =>
   useQuery({ queryKey: ["contacts"], queryFn: () => commApi.contacts() });

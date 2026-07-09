@@ -9,6 +9,8 @@ import {
   X,
   CheckCircle2,
   Circle,
+  Pencil,
+  Trash2,
 } from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
 import { PERMISSIONS } from "@shared/permissions";
@@ -22,11 +24,14 @@ import {
   TextField,
   Select,
   EmptyState,
+  confirm,
 } from "@shared/ui";
 import { apiErrorMessage } from "@api/apiClient";
 import {
   useLessons,
   useCreateLesson,
+  useUpdateLesson,
+  useDeleteLesson,
   useCompleteLesson,
 } from "@modules/lms/hooks/useLms";
 import { useCourses } from "@modules/academics/hooks/useAcademics";
@@ -46,7 +51,9 @@ export function LessonsTab() {
   const isStudent = useAuthStore((s) => s.user?.role === "student");
   const { data, isLoading } = useLessons();
   const complete = useCompleteLesson();
+  const del = useDeleteLesson();
   const [showAdd, setShowAdd] = useState(false);
+  const [editLesson, setEditLesson] = useState<Lesson | null>(null);
 
   const lessons = data || [];
   const done = lessons.filter((l) => l.completed).length;
@@ -142,6 +149,36 @@ export function LessonsTab() {
                       />
                     )}
                   </Pressable>
+                ) : canManage ? (
+                  <HStack gap={4} align="center">
+                    <Pressable
+                      onPress={() => setEditLesson(l)}
+                      hitSlop={8}
+                      style={{ padding: 6 }}
+                    >
+                      <Pencil
+                        size={17}
+                        color={palette.cobalt[600]}
+                        strokeWidth={2}
+                      />
+                    </Pressable>
+                    <Pressable
+                      onPress={() =>
+                        confirm(
+                          `Delete lesson "${l.title}"? This can't be undone.`,
+                          () => del.mutate(l.id),
+                        )
+                      }
+                      hitSlop={8}
+                      style={{ padding: 6 }}
+                    >
+                      <Trash2
+                        size={17}
+                        color={palette.danger.text}
+                        strokeWidth={2}
+                      />
+                    </Pressable>
+                  </HStack>
                 ) : null}
               </HStack>
             </Card>
@@ -149,19 +186,31 @@ export function LessonsTab() {
         })
       )}
 
-      <AddLessonModal visible={showAdd} onClose={() => setShowAdd(false)} />
+      <LessonFormModal visible={showAdd} onClose={() => setShowAdd(false)} />
+      {editLesson ? (
+        <LessonFormModal
+          visible
+          editLesson={editLesson}
+          onClose={() => setEditLesson(null)}
+        />
+      ) : null}
     </VStack>
   );
 }
 
-function AddLessonModal({
+function LessonFormModal({
   visible,
   onClose,
+  editLesson,
 }: {
   visible: boolean;
   onClose: () => void;
+  editLesson?: Lesson;
 }) {
   const create = useCreateLesson();
+  const update = useUpdateLesson();
+  const isEdit = !!editLesson;
+  const mut = isEdit ? update : create;
   const { data: courses } = useCourses({ limit: 200 });
   const [form, setForm] = useState({
     courseId: null as string | null,
@@ -172,7 +221,18 @@ function AddLessonModal({
   });
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
   useEffect(() => {
-    if (!visible)
+    if (!visible) return;
+    if (editLesson) {
+      setForm({
+        courseId: String((editLesson as any).courseId || ""),
+        title: editLesson.title || "",
+        type: editLesson.type || "video",
+        url: editLesson.url || "",
+        durationMinutes: editLesson.durationMinutes
+          ? String(editLesson.durationMinutes)
+          : "",
+      });
+    } else {
       setForm({
         courseId: null,
         title: "",
@@ -180,23 +240,28 @@ function AddLessonModal({
         url: "",
         durationMinutes: "",
       });
-  }, [visible]);
-  const prev = useRef(create.isPending);
+    }
+  }, [visible, editLesson]);
+  const prev = useRef(mut.isPending);
   useEffect(() => {
-    if (prev.current && !create.isPending && !create.error) onClose();
-    prev.current = create.isPending;
-  }, [create.isPending, create.error, onClose]);
+    if (prev.current && !mut.isPending && !mut.error) onClose();
+    prev.current = mut.isPending;
+  }, [mut.isPending, mut.error, onClose]);
   const submit = () => {
-    if (!form.courseId || !form.title) return;
-    create.mutate({
-      courseId: form.courseId,
+    if (!form.title || (!isEdit && !form.courseId)) return;
+    const body = {
       title: form.title,
       type: form.type,
       url: form.url || undefined,
       durationMinutes: form.durationMinutes
         ? Number(form.durationMinutes)
         : undefined,
-    });
+    };
+    if (isEdit) {
+      update.mutate({ id: (editLesson as any).id, body });
+    } else {
+      create.mutate({ courseId: form.courseId, ...body });
+    }
   };
 
   return (
@@ -214,30 +279,32 @@ function AddLessonModal({
             style={{ marginBottom: 16 }}
           >
             <Text variant="h3" tone="primary">
-              Add lesson
+              {isEdit ? "Edit lesson" : "Add lesson"}
             </Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <X size={20} color={palette.text.tertiary} strokeWidth={2} />
             </Pressable>
           </HStack>
-          {create.error ? (
+          {mut.error ? (
             <View style={ov.err}>
               <Text variant="body-sm" tone="danger">
-                {apiErrorMessage(create.error)}
+                {apiErrorMessage(mut.error)}
               </Text>
             </View>
           ) : null}
           <VStack gap={14}>
-            <Select
-              label="Course"
-              placeholder="Select course"
-              value={form.courseId}
-              options={(courses?.data || []).map((c) => ({
-                value: c.id,
-                label: c.name,
-              }))}
-              onChange={(v) => set("courseId", v)}
-            />
+            {isEdit ? null : (
+              <Select
+                label="Course"
+                placeholder="Select course"
+                value={form.courseId}
+                options={(courses?.data || []).map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                }))}
+                onChange={(v) => set("courseId", v)}
+              />
+            )}
             <TextField
               label="Title"
               value={form.title}
@@ -270,9 +337,9 @@ function AddLessonModal({
             />
           </VStack>
           <Button
-            label="Add lesson"
+            label={isEdit ? "Save changes" : "Add lesson"}
             size="lg"
-            loading={create.isPending}
+            loading={mut.isPending}
             onPress={submit}
             style={{ marginTop: 18 }}
           />

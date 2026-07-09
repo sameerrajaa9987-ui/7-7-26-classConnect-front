@@ -19,6 +19,24 @@ export const useCreateExam = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["exams"] }),
   });
 };
+export const useUpdateExam = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; body: any }) =>
+      examsApi.update(v.id, v.body),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["exams"] });
+      qc.invalidateQueries({ queryKey: ["exam", v.id] });
+    },
+  });
+};
+export const useDeleteExam = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => examsApi.remove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["exams"] }),
+  });
+};
 export const useEnterMarks = () => {
   const qc = useQueryClient();
   return useMutation({

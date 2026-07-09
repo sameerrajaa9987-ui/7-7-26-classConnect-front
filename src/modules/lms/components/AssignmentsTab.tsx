@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { View, Modal, Pressable, ScrollView } from "react-native";
-import { ClipboardList, Plus, X, Clock } from "lucide-react-native";
+import { ClipboardList, Plus, X, Pencil, Trash2 } from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
 import { PERMISSIONS } from "@shared/permissions";
 import { palette, radius } from "@shared/designSystem";
@@ -14,11 +14,14 @@ import {
   Select,
   StatusChip,
   EmptyState,
+  confirm,
 } from "@shared/ui";
 import { apiErrorMessage } from "@api/apiClient";
 import {
   useAssignments,
   useCreateAssignment,
+  useUpdateAssignment,
+  useDeleteAssignment,
   useAssignment,
   useSubmitAssignment,
   useGradeSubmission,
@@ -36,6 +39,7 @@ export function AssignmentsTab() {
   const { data, isLoading } = useAssignments();
   const [showAdd, setShowAdd] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [editA, setEditA] = useState<Assignment | null>(null);
 
   const list = data || [];
 
@@ -115,27 +119,46 @@ export function AssignmentsTab() {
           </Card>
         ))
       )}
-      <AddAssignmentModal visible={showAdd} onClose={() => setShowAdd(false)} />
+      <AssignmentFormModal
+        visible={showAdd}
+        onClose={() => setShowAdd(false)}
+      />
+      {editA ? (
+        <AssignmentFormModal
+          visible
+          editAssignment={editA}
+          onClose={() => setEditA(null)}
+        />
+      ) : null}
       {detailId ? (
         <AssignmentDetailModal
           id={detailId}
           isStudent={isStudent}
           canManage={canManage}
           onClose={() => setDetailId(null)}
+          onEdit={(a) => {
+            setDetailId(null);
+            setEditA(a);
+          }}
         />
       ) : null}
     </VStack>
   );
 }
 
-function AddAssignmentModal({
+function AssignmentFormModal({
   visible,
   onClose,
+  editAssignment,
 }: {
   visible: boolean;
   onClose: () => void;
+  editAssignment?: Assignment;
 }) {
   const create = useCreateAssignment();
+  const update = useUpdateAssignment();
+  const isEdit = !!editAssignment;
+  const mut = isEdit ? update : create;
   const { data: batches } = useBatches({ limit: 200 });
   const [form, setForm] = useState({
     batchId: null as string | null,
@@ -146,7 +169,18 @@ function AddAssignmentModal({
   });
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
   useEffect(() => {
-    if (!visible)
+    if (!visible) return;
+    if (editAssignment) {
+      setForm({
+        batchId: String((editAssignment as any).batchId || ""),
+        title: editAssignment.title || "",
+        maxMarks: String(editAssignment.maxMarks ?? 100),
+        dueDate: editAssignment.dueDate
+          ? editAssignment.dueDate.slice(0, 10)
+          : "",
+        description: (editAssignment as any).description || "",
+      });
+    } else {
       setForm({
         batchId: null,
         title: "",
@@ -154,21 +188,29 @@ function AddAssignmentModal({
         dueDate: "",
         description: "",
       });
-  }, [visible]);
-  const prev = useRef(create.isPending);
+    }
+  }, [visible, editAssignment]);
+  const prev = useRef(mut.isPending);
   useEffect(() => {
-    if (prev.current && !create.isPending && !create.error) onClose();
-    prev.current = create.isPending;
-  }, [create.isPending, create.error, onClose]);
+    if (prev.current && !mut.isPending && !mut.error) onClose();
+    prev.current = mut.isPending;
+  }, [mut.isPending, mut.error, onClose]);
   const submit = () => {
-    if (!form.batchId || !form.title) return;
-    create.mutate({
-      batchId: form.batchId,
+    if (!form.title || (!isEdit && !form.batchId)) return;
+    const body = {
       title: form.title,
       maxMarks: Number(form.maxMarks) || 100,
-      dueDate: form.dueDate || undefined,
+      dueDate: form.dueDate || (isEdit ? null : undefined),
       description: form.description || undefined,
-    });
+    };
+    if (isEdit) {
+      update.mutate({
+        id: (editAssignment as any).id || (editAssignment as any)._id,
+        body,
+      });
+    } else {
+      create.mutate({ batchId: form.batchId, ...body });
+    }
   };
   return (
     <Modal
@@ -185,30 +227,32 @@ function AddAssignmentModal({
             style={{ marginBottom: 16 }}
           >
             <Text variant="h3" tone="primary">
-              New assignment
+              {isEdit ? "Edit assignment" : "New assignment"}
             </Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <X size={20} color={palette.text.tertiary} strokeWidth={2} />
             </Pressable>
           </HStack>
-          {create.error ? (
+          {mut.error ? (
             <View style={ov.err}>
               <Text variant="body-sm" tone="danger">
-                {apiErrorMessage(create.error)}
+                {apiErrorMessage(mut.error)}
               </Text>
             </View>
           ) : null}
           <VStack gap={14}>
-            <Select
-              label="Batch"
-              placeholder="Select batch"
-              value={form.batchId}
-              options={(batches?.data || []).map((b) => ({
-                value: b.id,
-                label: `${b.name} · ${b.courseName}`,
-              }))}
-              onChange={(v) => set("batchId", v)}
-            />
+            {isEdit ? null : (
+              <Select
+                label="Batch"
+                placeholder="Select batch"
+                value={form.batchId}
+                options={(batches?.data || []).map((b) => ({
+                  value: b.id,
+                  label: `${b.name} · ${b.courseName}`,
+                }))}
+                onChange={(v) => set("batchId", v)}
+              />
+            )}
             <TextField
               label="Title"
               value={form.title}
@@ -240,9 +284,9 @@ function AddAssignmentModal({
             </HStack>
           </VStack>
           <Button
-            label="Create assignment"
+            label={isEdit ? "Save changes" : "Create assignment"}
             size="lg"
-            loading={create.isPending}
+            loading={mut.isPending}
             onPress={submit}
             style={{ marginTop: 18 }}
           />
@@ -257,15 +301,18 @@ function AssignmentDetailModal({
   isStudent,
   canManage,
   onClose,
+  onEdit,
 }: {
   id: string;
   isStudent: boolean;
   canManage: boolean;
   onClose: () => void;
+  onEdit: (a: Assignment) => void;
 }) {
   const { data: a } = useAssignment(id);
   const submit = useSubmitAssignment();
   const grade = useGradeSubmission();
+  const del = useDeleteAssignment();
   const [text, setText] = useState("");
   const [grades, setGrades] = useState<Record<string, string>>({});
 
@@ -303,6 +350,43 @@ function AssignmentDetailModal({
                   <Text variant="body-sm" tone="secondary">
                     {a.description}
                   </Text>
+                ) : null}
+                {canManage ? (
+                  <HStack gap={10}>
+                    <Button
+                      label="Edit"
+                      size="sm"
+                      variant="secondary"
+                      fullWidth={false}
+                      icon={
+                        <Pencil
+                          size={15}
+                          color={palette.cobalt[600]}
+                          strokeWidth={2}
+                        />
+                      }
+                      onPress={() => onEdit(a)}
+                    />
+                    <Button
+                      label="Delete"
+                      size="sm"
+                      variant="destructive"
+                      fullWidth={false}
+                      loading={del.isPending}
+                      icon={
+                        <Trash2 size={15} color="#FFFFFF" strokeWidth={2} />
+                      }
+                      onPress={() =>
+                        confirm(
+                          `Delete assignment "${a.title}"? This can't be undone.`,
+                          () =>
+                            del.mutate((a as any).id || (a as any)._id, {
+                              onSuccess: onClose,
+                            }),
+                        )
+                      }
+                    />
+                  </HStack>
                 ) : null}
 
                 {isStudent ? (
