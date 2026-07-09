@@ -30,7 +30,6 @@ import {
   useStaffRoster,
   useMarkStaffAttendance,
 } from "@modules/attendance/hooks/useAttendance";
-import { useTeachers } from "@modules/academics/hooks/useAcademics";
 import { AttStatus } from "@modules/attendance/types";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
@@ -301,7 +300,6 @@ function StudentAttendance() {
 
 function StaffAttendance() {
   const [date, setDate] = useState(todayStr());
-  const { data: teachers } = useTeachers();
   const { data: roster } = useStaffRoster(date);
   const mark = useMarkStaffAttendance();
   const [statuses, setStatuses] = useState<Record<string, string>>({});

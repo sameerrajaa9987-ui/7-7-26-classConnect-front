@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { FileSpreadsheet, Plus, X, Calendar } from "lucide-react-native";
+import { FileSpreadsheet, Plus, X } from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
 import { PERMISSIONS } from "@shared/permissions";
 import { palette, radius, shadows, layout } from "@shared/designSystem";

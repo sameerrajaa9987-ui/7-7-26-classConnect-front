@@ -22,8 +22,7 @@ export const useCreateExam = () => {
 export const useUpdateExam = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { id: string; body: any }) =>
-      examsApi.update(v.id, v.body),
+    mutationFn: (v: { id: string; body: any }) => examsApi.update(v.id, v.body),
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["exams"] });
       qc.invalidateQueries({ queryKey: ["exam", v.id] });

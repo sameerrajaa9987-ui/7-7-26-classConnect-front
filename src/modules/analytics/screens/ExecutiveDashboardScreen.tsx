@@ -24,7 +24,6 @@ import {
   Button,
   StatTile,
   StatusChip,
-  EmptyState,
 } from "@shared/ui";
 import {
   useExecutive,
@@ -37,13 +36,6 @@ const money = (p?: number | null) =>
   p == null
     ? "—"
     : "₹" + (p / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 });
-const TONE: Record<string, string> = {
-  info: palette.info.text,
-  success: palette.success.text,
-  warning: palette.warning.text,
-  danger: palette.danger.text,
-};
-
 export default function ExecutiveDashboardScreen() {
   const { width } = useWindowDimensions();
   const cols = width >= 1100 ? 4 : 2;
@@ -137,7 +129,7 @@ export default function ExecutiveDashboardScreen() {
               AI Recommendation Panel
             </Text>
             <Text variant="caption" style={{ color: "rgba(255,255,255,0.8)" }}>
-              Real-time insights from your institute's data
+              Real-time insights from your institute&rsquo;s data
             </Text>
           </VStack>
         </HStack>

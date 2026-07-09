@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Modal, Pressable, ScrollView } from "react-native";
+import { View, Modal, Pressable } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   ArrowLeft,
@@ -41,7 +41,6 @@ import {
   useMyReportCard,
 } from "@modules/exams/hooks/useExams";
 import { useStudents } from "@modules/students/hooks/useStudents";
-import { ExamResult } from "@modules/exams/types";
 
 const GRADE_TONE = (g: string) =>
   g === "F" || g === "AB" ? "danger" : g.startsWith("A") ? "success" : "info";

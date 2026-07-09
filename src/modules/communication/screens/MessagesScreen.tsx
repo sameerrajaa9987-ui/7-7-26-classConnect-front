@@ -11,7 +11,6 @@ import {
   Button,
   Select,
   TextField,
-  StatusChip,
   EmptyState,
   Avatar,
 } from "@shared/ui";

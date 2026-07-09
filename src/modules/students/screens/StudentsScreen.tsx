@@ -4,7 +4,7 @@ import { useNavigation } from "@react-navigation/native";
 import { GraduationCap, Plus, Search, Phone } from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
 import { PERMISSIONS } from "@shared/permissions";
-import { palette, radius, layout } from "@shared/designSystem";
+import { palette, layout } from "@shared/designSystem";
 import {
   Screen,
   Text,

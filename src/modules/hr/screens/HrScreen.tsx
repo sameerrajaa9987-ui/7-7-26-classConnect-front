@@ -1,13 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Modal, Pressable, ScrollView } from "react-native";
-import {
-  Wallet,
-  CalendarClock,
-  Plus,
-  X,
-  Check,
-  IndianRupee,
-} from "lucide-react-native";
+import { View, Modal, Pressable } from "react-native";
+import { Wallet, CalendarClock, Plus, X, Check } from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
 import { PERMISSIONS } from "@shared/permissions";
 import { palette, radius, shadows } from "@shared/designSystem";
@@ -29,7 +22,6 @@ import {
   usePayrollSummary,
   useUpsertPayroll,
   useMarkPaid,
-  useMyPayslips,
   useLeave,
   useApplyLeave,
   useReviewLeave,

@@ -42,7 +42,8 @@ export const lmsApi = {
   // Quizzes
   listQuizzes: (batchId?: string) => g<Quiz[]>("/lms/quizzes", { batchId }),
   createQuiz: (body: any) => post<Quiz>("/lms/quizzes", body),
-  updateQuiz: (id: string, body: any) => patch<Quiz>(`/lms/quizzes/${id}`, body),
+  updateQuiz: (id: string, body: any) =>
+    patch<Quiz>(`/lms/quizzes/${id}`, body),
   removeQuiz: (id: string) => del(`/lms/quizzes/${id}`),
   getQuiz: (id: string) => g<Quiz>(`/lms/quizzes/${id}`),
   attemptQuiz: (id: string, answers: number[]) =>

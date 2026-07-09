@@ -13,7 +13,6 @@ import {
   Cake,
   Droplet,
   X,
-  Copy,
   CheckCircle2,
 } from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
@@ -245,7 +244,7 @@ export default function StudentDetailScreen() {
             ) : null}
             <Text variant="caption" tone="tertiary">
               Portal accounts are privacy-scoped — parents & students only ever
-              see this student's data.
+              see this student&rsquo;s data.
             </Text>
           </Card>
 

@@ -28,7 +28,6 @@ import { PermissionEditor } from "@modules/team/components/PermissionEditor";
 
 function confirm(message: string, onYes: () => void) {
   if (Platform.OS === "web") {
-    // eslint-disable-next-line no-alert
     if (window.confirm(message)) onYes();
   } else {
     Alert.alert("Please confirm", message, [

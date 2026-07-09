@@ -117,11 +117,7 @@ export default function AnnouncementsScreen() {
                     </Text>
                   ) : null}
                   <HStack justify="space-between" align="center">
-                    <Text
-                      variant="caption"
-                      tone="tertiary"
-                      style={{ flex: 1 }}
-                    >
+                    <Text variant="caption" tone="tertiary" style={{ flex: 1 }}>
                       {a.createdByName} ·{" "}
                       {new Date(a.createdAt).toLocaleString()}
                     </Text>
@@ -308,8 +304,9 @@ function ComposeModal({
               />
               {isEdit ? (
                 <Text variant="caption" tone="tertiary">
-                  Audience ({audienceLabel(editAnnouncement)}) can't be changed
-                  after sending. Delete and re-send to change who receives it.
+                  Audience ({audienceLabel(editAnnouncement)}) can&rsquo;t be
+                  changed after sending. Delete and re-send to change who
+                  receives it.
                 </Text>
               ) : (
                 <>

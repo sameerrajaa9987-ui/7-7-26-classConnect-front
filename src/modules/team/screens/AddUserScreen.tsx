@@ -195,7 +195,7 @@ export default function AddUserScreen() {
           </Text>
           <Text variant="body-sm" tone="tertiary" style={{ marginBottom: 16 }}>
             Access is controlled by what you select here — the role label grants
-            nothing. Leave empty to apply the {role}'s default set.
+            nothing. Leave empty to apply the {role}&rsquo;s default set.
           </Text>
           <Card style={{ marginBottom: 20 }}>
             <PermissionEditor

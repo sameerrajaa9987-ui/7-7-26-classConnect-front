@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Modal, Pressable, ScrollView, Linking } from "react-native";
+import { View, Modal, Pressable, Linking } from "react-native";
 import {
   PlayCircle,
   FileText,

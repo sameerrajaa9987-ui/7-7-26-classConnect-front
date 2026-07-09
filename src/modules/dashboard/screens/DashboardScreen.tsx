@@ -1,10 +1,8 @@
 import React from "react";
 import { View, useWindowDimensions } from "react-native";
 import {
-  GraduationCap,
   Users,
   UserRound,
-  Contact,
   Sparkles,
   CalendarCheck2,
   Wallet,
@@ -60,7 +58,6 @@ export default function DashboardScreen() {
   const isPortal = role === "parent" || role === "student";
   const p = data?.people;
 
-  const a = data?.academics;
   const todayPct = data?.attendance?.todayPercent;
   const fees = data?.fees;
   const money = (paise?: number | null) =>

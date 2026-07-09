@@ -20,10 +20,7 @@ export const commApi = {
       .then((r) => r.data.data),
   updateAnnouncement: (id: string, body: any) =>
     apiClient
-      .patch<{ data: Announcement }>(
-        `/communication/announcements/${id}`,
-        body,
-      )
+      .patch<{ data: Announcement }>(`/communication/announcements/${id}`, body)
       .then((r) => r.data.data),
   removeAnnouncement: (id: string) =>
     apiClient

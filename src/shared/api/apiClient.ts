@@ -6,6 +6,9 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+// axios.create is the documented factory; the import/no-named-as-default-member
+// caution here is a known false positive for axios's default export.
+// eslint-disable-next-line import/no-named-as-default-member
 export const apiClient = axios.create({
   baseURL: environment.apiUrl,
   headers: { "Content-Type": "application/json" },

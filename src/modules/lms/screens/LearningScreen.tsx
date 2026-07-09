@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView } from "react-native";
 import {
   PlayCircle,
   ClipboardList,
@@ -8,7 +8,7 @@ import {
 } from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
 import { palette, radius } from "@shared/designSystem";
-import { Screen, Text, HStack } from "@shared/ui";
+import { Screen, Text } from "@shared/ui";
 import { LessonsTab } from "@modules/lms/components/LessonsTab";
 import { AssignmentsTab } from "@modules/lms/components/AssignmentsTab";
 import { QuizzesTab } from "@modules/lms/components/QuizzesTab";
